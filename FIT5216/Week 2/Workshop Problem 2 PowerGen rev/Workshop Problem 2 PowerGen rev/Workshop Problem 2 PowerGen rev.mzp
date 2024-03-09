@@ -1,0 +1,1 @@
+{"version":105,"projectFiles":["models/powergen.mzn","models/powergen.mzc","data/powergen.dzn","data/prelim1.dzn","data/prelim2.dzn","data/prelim3.dzn","models/prelim.mzn","models/prelim.mzc","_mooc"],"openFiles":["models/powergen.mzn","models/prelim.mzn"],"selectedBuiltinConfigId":"org.minizinc.mip.highs","selectedBuiltinConfigVersion":"default"}

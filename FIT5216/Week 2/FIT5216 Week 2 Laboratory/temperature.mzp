@@ -1,0 +1,25 @@
+{
+    "builtinSolverConfigs": [
+    ],
+    "openFiles": [
+        "models/temperature_nd.mzn",
+        "models/temperature.mzn"
+    ],
+    "openTab": 0,
+    "projectFiles": [
+        "data/temp0.dzn",
+        "data/temp1.dzn",
+        "data/temp2.dzn",
+        "data/temp3.dzn",
+        "data/temp4.dzn",
+        "models/temperature.mzc",
+        "models/temperature.mzn",
+        "models/temperature_nd.mzc",
+        "models/temperature_nd.mzn"
+    ],
+    "projectSolverConfigs": [
+    ],
+    "selectedBuiltinConfigId": "org.gecode.gecode",
+    "selectedBuiltinConfigVersion": "6.0.1",
+    "version": 105
+}
