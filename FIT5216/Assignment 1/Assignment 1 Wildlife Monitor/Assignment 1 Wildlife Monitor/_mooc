@@ -4,12 +4,137 @@
         "files": {
             "models/animal.mzn": {
                 "changes": [
+                    {
+                        "edits": [
+                            {
+                                "line": 18,
+                                "text": "var set of int: ACTUALTRAPS = 1..actual_traps;",
+                                "type": "insertion"
+                            },
+                            {
+                                "line": 26,
+                                "text": "",
+                                "type": "insertion"
+                            },
+                            {
+                                "line": 27,
+                                "text": "constraint forall(i in 1..actual_traps) (cost[x[i]] >= 0); % every other location cannot be base and that cost for the chosen trap cannot be negative",
+                                "type": "deletion"
+                            },
+                            {
+                                "line": 28,
+                                "text": "constraint forall(i in ACTUALTRAPS) (cost[x[i]] >= 0); % every other location cannot be base and that cost for the chosen trap cannot be negative",
+                                "type": "insertion"
+                            },
+                            {
+                                "line": 29,
+                                "text": "constraint forall (i in 1..actual_traps,j in 1..actual_traps where i!=j) (d[x[i],x[j]] >= mind); % double for loop through the matrix, ignoring itself and making sure that each locations within x are at least min distance away",
+                                "type": "deletion"
+                            },
+                            {
+                                "line": 30,
+                                "text": "constraint forall (i in ACTUALTRAPS,j in ACTUALTRAPS where i!=j) (d[x[i],x[j]] >= mind); % double for loop through the matrix, ignoring itself and making sure that each locations within x are at least min distance away",
+                                "type": "insertion"
+                            },
+                            {
+                                "line": 33,
+                                "text": "constraint forall (i in 1..actual_traps) (x[i] != base);",
+                                "type": "deletion"
+                            },
+                            {
+                                "line": 34,
+                                "text": "constraint forall (i in ACTUALTRAPS) (x[i] != base);",
+                                "type": "insertion"
+                            },
+                            {
+                                "line": 37,
+                                "text": "constraint forall (j in covered) (exists (i in 1..actual_traps)(d[x[i],j] <= move)); %",
+                                "type": "deletion"
+                            },
+                            {
+                                "line": 38,
+                                "text": "constraint forall (j in covered) (exists (i in ACTUALTRAPS)(d[x[i],j] <= move)); %",
+                                "type": "insertion"
+                            },
+                            {
+                                "line": 39,
+                                "text": "constraint sum (i in 1..actual_traps) (opcost + cost[x[i]]) <= budget;",
+                                "type": "deletion"
+                            },
+                            {
+                                "line": 40,
+                                "text": "constraint sum (i in ACTUALTRAPS) (opcost + cost[x[i]]) <= budget;",
+                                "type": "insertion"
+                            }
+                        ],
+                        "timestamp": 1710077314.835
+                    },
+                    {
+                        "edits": [
+                            {
+                                "line": 18,
+                                "text": "var set of int: ACTUALTRAPS = 1..actual_traps;",
+                                "type": "deletion"
+                            },
+                            {
+                                "line": 29,
+                                "text": "constraint forall(i in ACTUALTRAPS) (cost[x[i]] >= 0); % every other location cannot be base and that cost for the chosen trap cannot be negative",
+                                "type": "deletion"
+                            },
+                            {
+                                "line": 30,
+                                "text": "constraint forall(i in 1..actual_traps) (cost[x[i]] >= 0); % every other location cannot be base and that cost for the chosen trap cannot be negative",
+                                "type": "insertion"
+                            },
+                            {
+                                "line": 31,
+                                "text": "constraint forall (i in ACTUALTRAPS,j in ACTUALTRAPS where i!=j) (d[x[i],x[j]] >= mind); % double for loop through the matrix, ignoring itself and making sure that each locations within x are at least min distance away",
+                                "type": "deletion"
+                            },
+                            {
+                                "line": 32,
+                                "text": "constraint forall (i in 1..actual_traps,j in 1..actual_traps where i!=j) (d[x[i],x[j]] >= mind); % double for loop through the matrix, ignoring itself and making sure that each locations within x are at least min distance away",
+                                "type": "insertion"
+                            },
+                            {
+                                "line": 35,
+                                "text": "constraint forall (i in ACTUALTRAPS) (x[i] != base);",
+                                "type": "deletion"
+                            },
+                            {
+                                "line": 36,
+                                "text": "constraint forall (i in 1..actual_traps) (x[i] != base);",
+                                "type": "insertion"
+                            },
+                            {
+                                "line": 39,
+                                "text": "constraint forall (j in covered) (exists (i in ACTUALTRAPS)(d[x[i],j] <= move)); %",
+                                "type": "deletion"
+                            },
+                            {
+                                "line": 40,
+                                "text": "constraint forall (j in covered) (exists (i in 1..actual_traps)(d[x[i],j] <= move)); %",
+                                "type": "insertion"
+                            },
+                            {
+                                "line": 41,
+                                "text": "constraint sum (i in ACTUALTRAPS) (opcost + cost[x[i]]) <= budget;",
+                                "type": "deletion"
+                            },
+                            {
+                                "line": 42,
+                                "text": "constraint sum (i in 1..actual_traps) (opcost + cost[x[i]]) <= budget;",
+                                "type": "insertion"
+                            }
+                        ],
+                        "timestamp": 1710077344.287
+                    }
                 ],
-                "snapshot": "enum LOC; % set of locations\nLOC: base; % base location where information is collected\nconstraint assert(base = min(LOC),\"base is not the first mentioned location\\n\");\nint: n; % number of traps available\narray[LOC] of int: wild; % amount of interesting wildlife at each location\narray[LOC] of int: cost; % cost to setup trap at location, -ve means unavailable\nconstraint assert(cost[base] = 0, \"Cost of base location is not 0\\n\");\narray[LOC,LOC] of int: d; % distance from one location to another (symmetric)\nconstraint forall(l1, l2 in LOC where l1 <= l2)(assert(d[l1,l2] = d[l2,l1], \"distance is not symmetric at \\(l1) \\(l2)\\n\"));\nconstraint forall(l in LOC)(assert(d[l,l] = 0, \"self distance for \\(l) is not zero\\n\"));\nint: move; % movement distance of animals\nint: link; % wireless link maximum communication distance;\nint: mind; % mininum distance between two traps\nint: opcost; % cost to maintain/operate camera trap\nint: budget; % total budget for traps\n\nset of int: PLACE0 = 0..n;\nset of int: PLACE = 1..n;\narray[PLACE0] of var LOC: x; % location where camera trap is placed (except 0)\narray[PLACE] of var PLACE0: s; % location to send info (part C only)\nvar int: total_wild;\n\nconstraint x[0] = base; % first location has to be base\nconstraint forall(i in 1..n) (x[i] != base /\\ cost[x[i]] > 0); % every other location cannot be base\nconstraint forall (i in PLACE) (s[i] = 0); % set all s to 0\nconstraint forall (i in PLACE,j in PLACE where i!=j) (d[x[i],x[j]] >= mind); % double for loop through the matrix, ignoring itself and making sure that each locations within x are at least min distance away\nvar set of LOC: covered;\n% constraint forall (i in covered, j in PLACE where i != j) (d[covered[i],LOC[j]] <= move);\nconstraint forall (j in covered) (exists (i in PLACE)(d[x[i],j] <= move));\n\n% constraint sum (i in PLACE) (opcost + cost[x[i]]) <= budget;\n \nconstraint total_wild = sum (j in covered) (wild[j]);\n\nsolve maximize total_wild;\n\n\n\n"
+                "snapshot": "enum LOC; % set of locations\nLOC: base; % base location where information is collected\nconstraint assert(base = min(LOC),\"base is not the first mentioned location\\n\");\nint: n; % number of traps available\narray[LOC] of int: wild; % amount of interesting wildlife at each location\narray[LOC] of int: cost; % cost to setup trap at location, -ve means unavailable\nconstraint assert(cost[base] = 0, \"Cost of base location is not 0\\n\");\narray[LOC,LOC] of int: d; % distance from one location to another (symmetric)\nconstraint forall(l1, l2 in LOC where l1 <= l2)(assert(d[l1,l2] = d[l2,l1], \"distance is not symmetric at \\(l1) \\(l2)\\n\"));\nconstraint forall(l in LOC)(assert(d[l,l] = 0, \"self distance for \\(l) is not zero\\n\"));\nint: move; % movement distance of animals\nint: link; % wireless link maximum communication distance;\nint: mind; % mininum distance between two traps\nint: opcost; % cost to maintain/operate camera trap\nint: budget; % total budget for traps\nvar int: total_wild;\nvar int: actual_traps;\n\nset of int: PLACE0 = 0..n;\nset of int: PLACE = 1..n;\narray[PLACE0] of var LOC: x; % location where camera trap is placed (except 0)\narray[PLACE] of var PLACE0: s; % location to send info (part C only)\n\nconstraint actual_traps <= n  /\\ actual_traps >= 1;\n\n\nconstraint x[0] = base; % first location has to be base\nconstraint forall(i in 1..actual_traps) (cost[x[i]] >= 0); % every other location cannot be base and that cost for the chosen trap cannot be negative\nconstraint forall (i in PLACE) (s[i] = 0); % set all s to 0\nconstraint forall (i in 1..actual_traps,j in 1..actual_traps where i!=j) (d[x[i],x[j]] >= mind); % double for loop through the matrix, ignoring itself and making sure that each locations within x are at least min distance away\n\nconstraint forall (i in (actual_traps + 1)..n) (x[i] = base);\n\nconstraint forall (i in 1..actual_traps) (x[i] != base);\n\n\nvar set of LOC: covered; % set of locations which represents the covered\nconstraint forall (j in covered) (exists (i in 1..actual_traps)(d[x[i],j] <= move)); %\n\nconstraint sum (i in 1..actual_traps) (opcost + cost[x[i]]) <= budget;\n \nconstraint total_wild = sum (j in covered) (wild[j]);\n\nsolve maximize total_wild;\n\n\n"
             }
         },
-        "parent": "856e0854-d3a7-4c5a-a038-7f23e9099821",
-        "uuid": "28c5f624-dbf3-4592-be18-0cbdc644310e"
+        "parent": "527fa37d-6df1-4020-8af9-ac0b32e74a40",
+        "uuid": "4ad2f923-168d-4a9f-b30d-51fea4cdef78"
     },
     "modelAssignments": [
         {
