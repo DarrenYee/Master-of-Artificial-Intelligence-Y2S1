@@ -35,8 +35,13 @@ constraint forall (i in 1..actual_traps) (x[i] != base);
 var set of LOC: covered; % set of locations which represents the covered
 constraint forall (j in covered) (exists (i in 1..actual_traps)(d[x[i],j] <= move)); 
 
-constraint forall (i in 0..actual_traps, j in 1..actual_traps) ((((d[x[i],x[s[j]]]) + (d[x[i],x[0]]) <= link) \/ ((d[x[i],x[s[j]]]) <= link /\ i = 0)) /\ i != j); % set all s to 0
+% constraint forall (i in 1..actual_traps, j in 1..actual_traps where i != j) ((((d[x[i],x[s[j]]]) + (d[x[i],base]) <= link)) \/ ((d[x[i],x[s[j]]]) <= link /\ s[j] = base) /\ j != s[j]); % set all s to 0
 
+% constraint forall (i in 1..actual_traps) (s[i] < actual_traps /\ ((d[x[i],x[s[i]]] + (d[x[s[i]],base]) <= (d[x[i],base]))));
+
+constraint forall (i in 1..actual_traps) (s[i] < actual_traps);
+
+constraint forall (i in 1..actual_traps) (((d[x[i],x[s[i]]]) + (d[x[s[i]],base]) <= link /\ s[i] != i /\ s[i] != 0) \/ ((d[x[i],base]) <= link /\ s[i] = 0));
 
 constraint sum (i in 1..actual_traps) (opcost + cost[x[i]]) <= budget;
  
