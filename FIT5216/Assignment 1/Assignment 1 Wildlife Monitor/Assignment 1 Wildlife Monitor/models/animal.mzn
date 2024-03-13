@@ -21,23 +21,19 @@ set of int: PLACE = 1..n;
 array[PLACE0] of var LOC: x; % location where camera trap is placed (except 0)
 array[PLACE] of var PLACE0: s; % location to send info (part C only)
 
-constraint actual_traps <= n  /\ actual_traps >= 1;
+constraint actual_traps <= n  /\ actual_traps >= 1; % actual number of traps, works similarly to the Week 3 workshop Size value
 
 
+% PART 1 / PART 2
 constraint x[0] = base; % first location has to be base
 constraint forall(i in 1..actual_traps) (cost[x[i]] >= 0); % every other location cannot be base and that cost for the chosen trap cannot be negative
 constraint forall (i in 1..actual_traps,j in 1..actual_traps where i!=j) (d[x[i],x[j]] >= mind); % double for loop through the matrix, ignoring itself and making sure that each locations within x are at least min distance away
-
 constraint forall (i in (actual_traps + 1)..n) (x[i] = base /\ s[i] = 0);
 constraint forall (i in 1..actual_traps) (x[i] != base);
 
-
+% PART 2 / PART 3
 var set of LOC: covered; % set of locations which represents the covered
 constraint forall (j in covered) (exists (i in 1..actual_traps)(d[x[i],j] <= move)); 
-
-% constraint forall (i in 1..actual_traps, j in 1..actual_traps where i != j) ((((d[x[i],x[s[j]]]) + (d[x[i],base]) <= link)) \/ ((d[x[i],x[s[j]]]) <= link /\ s[j] = base) /\ j != s[j]); % set all s to 0
-
-% constraint forall (i in 1..actual_traps) (s[i] < actual_traps /\ ((d[x[i],x[s[i]]] + (d[x[s[i]],base]) <= (d[x[i],base]))));
 
 constraint forall (i in 1..actual_traps) (s[i] < actual_traps);
 
