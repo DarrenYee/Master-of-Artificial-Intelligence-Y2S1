@@ -8,16 +8,22 @@ int: l;                % average distance lower bound
 set of int: P0 = 0..n;
 array[1..k] of var P0: Sx;
 
-var int: distance;
 
-constraint distance = sum (i in 1..k-1, j in i..k) (d[Sx[i],Sx[j]]);
+var int: distance;
+var int: actual_points;
+
+
+constraint actual_points <= k  /\ actual_points >= 1;
+
+constraint distance = sum (i in 1..actual_points, j in 1..actual_points where i < j) (d[Sx[i],Sx[j]]);
+
 
 var int: temp;
 constraint temp = ((k*(k-1))/2);
 
-constraint distance / ((k*(k-1))/2) >= l;
+% constraint distance / ((k*(k-1))/2) >= l;
 
-constraint forall (i in 1..k, j in 1..k where i!=j) (Sx[i] != Sx[j]);
+constraint forall (i in 1..k-1) (Sx[i] >= (Sx[i]!=0)+Sx[i+1]);
 
 var int: value;
 solve maximize value;
