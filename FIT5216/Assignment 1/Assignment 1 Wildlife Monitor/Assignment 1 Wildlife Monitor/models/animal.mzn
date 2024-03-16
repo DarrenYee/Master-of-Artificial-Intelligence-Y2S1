@@ -30,18 +30,22 @@ constraint forall(i in 1..actual_traps) (cost[x[i]] >= 0); % every other locatio
 constraint forall (i in 1..actual_traps,j in 1..actual_traps where i!=j) (d[x[i],x[j]] >= mind); % double for loop through the matrix, ignoring itself and making sure that each locations within x are at least min distance away
 constraint forall (i in (actual_traps + 1)..n) (x[i] = base /\ s[i] = 0);
 constraint forall (i in 1..actual_traps) (x[i] != base);
+% constraint forall(i in 1..actual_traps - 1)(x[i] < x[i+1]); 
 
 % PART 2 / PART 3
 var set of LOC: covered; % set of locations which represents the covered
 constraint forall (j in covered) (exists (i in 1..actual_traps)(d[x[i],j] <= move)); 
 
-constraint forall (i in 1..actual_traps) (s[i] < actual_traps);
 
-constraint forall (i in 1..actual_traps) (((d[x[i],x[s[i]]]) + (d[x[s[i]],base]) <= link /\ s[i] != i /\ s[i] != 0) \/ ((d[x[i],base]) <= link /\ s[i] = 0));
+constraint forall (i in 1..actual_traps where d[x[i],base] <= link) (s[i] = 0);
+
+constraint forall (i in 1..actual_traps where d[x[i],base] > link)((d[x[i],x[s[i]]] <= link /\ s[i] != i));
 
 constraint sum (i in 1..actual_traps) (opcost + cost[x[i]]) <= budget;
  
 constraint total_wild = sum (j in covered) (wild[j]);
+
+constraint forall(i in 1..actual_traps - 1)(s[i] < i);
 
 solve maximize total_wild;
 
