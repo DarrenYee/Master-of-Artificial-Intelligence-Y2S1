@@ -10,20 +10,20 @@ array[1..k] of var P0: Sx;
 
 
 var int: distance;
-var int: actual_points;
+var int: actual_points = sum(i in 1..k)(Sx[i] != 0);
 
+constraint forall(i in 1..k-1)(Sx[i] >= (Sx[i] != 0) + Sx[i+1]);
 
 constraint actual_points <= k  /\ actual_points >= 1;
 
 constraint distance = sum (i in 1..actual_points, j in 1..actual_points where i < j) (d[Sx[i],Sx[j]]);
 
-
 var int: temp;
-constraint temp = ((k*(k-1))/2);
+constraint temp = ((actual_points*(actual_points-1)) div 2);
 
-% constraint distance / ((k*(k-1))/2) >= l;
+constraint distance div temp >= l;
 
-constraint forall (i in 1..k-1) (Sx[i] >= (Sx[i]!=0)+Sx[i+1]);
+constraint value = sum(i in 1..actual_points)(v[Sx[i]]);
 
 var int: value;
 solve maximize value;
