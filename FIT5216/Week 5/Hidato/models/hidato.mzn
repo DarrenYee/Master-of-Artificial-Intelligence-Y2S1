@@ -11,20 +11,25 @@ array[ROW,COL] of CLUE: clue;
 set of int: NUM = 1..m*n;
 array[ROW,COL] of var NUM: x;
 
-set of int: ROWCOL = 1..m*n;
-array [NUM] of var ROWCOL: y;
+set of int: POS = 1..n*m;
+array [NUM] of var POS: y;
 
-constraint forall(r in ROW, c in COL where clue[r,c] != 0) (x[r,c] = clue[r,c]);
+predicate adjacent (var POS: a, var POS: b) = 
+          let { var ROW: ra = (a-1) div m + 1;
+                var COL: ca = (a-1) mod m + 1;
+                var ROW: rb = (b-1) div m + 1;
+                var COL: cb = (b-1) mod m + 1;
+          } in
+          abs (ra-rb) <= 1 /\ abs (ca-cb) <= 1;
 
-% constraint forall (r in ROW, c in COL where x[r,c] != m*n) ((x[r,c+1] = x[r,c] + 1) \/ (x[r-1,c+1] = x[r,c] + 1) \/ (x[r-1,c] = x[r,c] + 1) \/ (x[r-1,c-1] = x[r,c] + 1) \/ (x[r,c-1] = x[r,c] + 1) \/ (x[r+1,c-1] = x[r,c] + 1) \/ (x[r+1,c] = x[r,c] + 1) \/ (x[r+1,c+1] = x[r,c] + 1));
+constraint forall(r in ROW, c in COL) (if clue[r,c] > 0 then x[r,c] = clue[r,c] endif);
 
-% constraint forall (num in 1..((m*n) -1)) ((y[n+1] = y[n] + 1) \/ (y[n+1] = y[n] - 1) \/ (y[n+1] = (((y[n] div 10) mod 10 + 1) mod 10) *10 + y[n] mod 10) \/ (y[n+1] = (((y[n] div 10) mod 10 + 1) mod 10) *10 + y[n] mod 10 + 1) \/ (y[n+1] = (((y[n] div 10) mod 10 + 1) mod 10) *10 + y[n] mod 10 + 2) \/ (y[n+1] = (((y[n] div 10) mod 10 - 1) mod 10) *10 + y[n] mod 10) \/ (y[n+1] = (((y[n] div 10) mod 10 - 1) mod 10) *10 + y[n] mod 10 + 1) \/ (y[n+1] = (((y[n] div 10) mod 10 - 1) mod 10) *10 + y[n] mod 10 + 2));
+include "inverse.mzn";
+constraint inverse(array1d(x),y);
+constraint forall (i in 1..m*n-1) (adjacent(y[i],y[i+1]));
 
-include "alldifferent.mzn";
-include "globals.mzn";
 
-constraint inverse(y,
-[x[r,c]|r in ROW, c in COL]);
+
 
 
 %% output for debugging                
