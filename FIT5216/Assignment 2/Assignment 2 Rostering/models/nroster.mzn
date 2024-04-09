@@ -10,6 +10,8 @@ int: maxweek; % maximum working shifts in any 7 day period
 int: maxnightfort; % maximum night shifts in any 14 day period
 int: minfort; % minimum number of working shifts in any 14 day period
 array[SHIFT,DAYS] of int: minshift; % minimum number of nurses rostered on each shift
+set of int: DAYSPERWEEK = 1..7;
+set of int: DAYSPERFORT = 1..14;
 % STAGE C data
 array[NURSE] of int: shift_cost;  
 % STAGE D data
@@ -35,24 +37,25 @@ array[NURSE,DAYS] of var SHIFT: sh; % shift for each nurse on each day
 var 0..nday*sum(shift_cost): total_cost;
 array[NURSE,DAYS] of var WARD: wd; % ward rostered for each nurse
 
+
 include "regular.mzn";  
 
       
-array[1..8,SHIFT] of 0..8: d =
+array[1..10,SHIFT] of 0..10: d =
       [|1,2,3,4,5  %MORN
       | 0,8,0,0,0  %DAY
       | 0,2,3,4,5  %EVEN
       | 0,0,3,6,5  %NIGH1
-      | 1,2,3,4,5  %OFF1
+      | 1,2,3,4,9  %OFF1
       | 0,0,3,7,5  %NIGH2
       | 0,0,3,0,5  %NIGH3
-      | 1,8,3,4,5|];  %DAY2     
-       
+      | 1,8,3,4,5  %DAY2
+      | 1,2,3,4,0  %OFF1
+      | 1,2,3,4,5|]; %DUMMY     
+     
 constraint forall (i in NURSE, j in DAYS) (rostered_off[i,j] -> sh[i,j] = OFF);
 
-constraint regular ([sh[i,j] | i in NURSE, j in DAYS],8,5,d,1,SHIFT);
-
-constraint forall (i in NURSE, j in 1..nday - 2) (sh[i,j] = OFF /\ sh[i,j+1] = OFF -> sh[i,j+2] != OFF);
+constraint forall(i in NURSE) (regular ([sh[i,j] |j in DAYS],10,5,d,10,SHIFT));
 
 % Each Shift s for each d has at least minshift [s,d]
 % No more than maxweek shifts (excluding off) in 7 day period
@@ -66,15 +69,12 @@ constraint forall (day in DAYS)
     [sh[n,day] | n in NURSE],
     [MORN, DAY, EVEN, NIGH, OFF],
     [minshift[MORN,day],minshift[DAY,day],minshift[EVEN,day],minshift[NIGH,day],minshift[OFF,day]],
-    [999999,999999,999999,999999,999999]
+    [card(NURSE),card(NURSE),card(NURSE),card(NURSE),card(NURSE)]
 ));
 
+constraint forall (n in NURSE, w in 1..(floor(nday/7))) (sum (day in DAYSPERWEEK) (sh[n,(7*(w-1)) + day ] != OFF) <= maxweek); 
 
-constraint forall (week in 1..nday div 7)
-  (global_cardinality(
-    [sh[n,day] | n in NURSE, day in (week*7)..week+7],
-  [],
-  []
-))
+constraint forall (n in NURSE, f in 1..(floor(nday/14))) (sum (day in DAYSPERFORT) (sh[n,(14*(f-1)) + day ] != OFF) >= minfort); 
 
+constraint forall (n in NURSE, f in 1..(floor(nday/14))) (sum (day in DAYSPERFORT) (sh[n,(14*(f-1)) + day ] = NIGH) <= maxnightfort); 
 
