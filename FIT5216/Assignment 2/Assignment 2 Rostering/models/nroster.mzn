@@ -10,8 +10,8 @@ int: maxweek; % maximum working shifts in any 7 day period
 int: maxnightfort; % maximum night shifts in any 14 day period
 int: minfort; % minimum number of working shifts in any 14 day period
 array[SHIFT,DAYS] of int: minshift; % minimum number of nurses rostered on each shift
-set of int: DAYSPERWEEK = 1..7;
-set of int: DAYSPERFORT = 1..14;
+set of int: DAYSPERWEEK = 0..6;
+set of int: DAYSPERFORT = 0..13;
 % STAGE C data
 array[NURSE] of int: shift_cost;  
 % STAGE D data
@@ -36,33 +36,42 @@ enum SLICE = { PREDAWN, AM, PM, LATE };
 array[NURSE,DAYS] of var SHIFT: sh; % shift for each nurse on each day
 var 0..nday*sum(shift_cost): total_cost;
 array[NURSE,DAYS] of var WARD: wd; % ward rostered for each nurse
+array[WARD,DAYS] of var int: count_wd; % ward rostered for each nurse
 
 
+% MORN = no rules
+% DAY = DAY -> DAY then no rules
+% EVEN = EVEN -> all except for MORN
+% NIGH = No NIGH -> NIGH -> NIGH, NO NIGH -> DAY or MORN
+% OFF = no OFF -> OFF
+
+include "globals.mzn";
 include "regular.mzn";  
 
       
 array[1..10,SHIFT] of 0..10: d =
-      [|1,2,3,4,5  %MORN
-      | 0,8,0,0,0  %DAY
-      | 0,2,3,4,5  %EVEN
-      | 0,0,3,6,5  %NIGH1
-      | 1,2,3,4,9  %OFF1
-      | 0,0,3,7,5  %NIGH2
-      | 0,0,3,0,5  %NIGH3
-      | 1,8,3,4,5  %DAY2
-      | 1,2,3,4,0  %OFF1
-      | 1,2,3,4,5|]; %DUMMY     
-     
-constraint forall (i in NURSE, j in DAYS) (rostered_off[i,j] -> sh[i,j] = OFF);
+      [|1,2,3,4,5  %MORN(1)
+      | 0,8,0,0,0  %DAY(2)
+      | 0,2,3,4,5  %EVEN(3)
+      | 0,0,3,6,5  %NIGH1(4)
+      | 1,2,3,4,9  %OFF1(5)
+      | 0,0,3,7,5  %NIGH2(6)
+      | 0,0,3,0,5  %NIGH3(7)
+      | 1,8,3,4,5  %DAY2(8)
+      | 1,2,3,4,0  %OFF2(9)
+      | 1,2,3,4,5|]; %DUMMY(10)     
 
-constraint forall(i in NURSE) (regular ([sh[i,j] |j in DAYS],10,5,d,10,SHIFT));
+  
+constraint forall (i in NURSE, j in DAYS) (rostered_off[i,j] -> (sh[i,j] = OFF /\ wd[i,j] = dummy));
+
+constraint forall(i in NURSE) (regular ([sh[i,j] |j in DAYS],10,5,d,10,{1,2,3,4,5,6,7,8,9,10}));
+
 
 % Each Shift s for each d has at least minshift [s,d]
 % No more than maxweek shifts (excluding off) in 7 day period
 % No less than minfort in 14 day period
 % No more than maxnightfort NIGH in any 14 day perdod
 
-include "globals.mzn";
 
 constraint forall (day in DAYS) 
   (global_cardinality (
@@ -72,9 +81,24 @@ constraint forall (day in DAYS)
     [card(NURSE),card(NURSE),card(NURSE),card(NURSE),card(NURSE)]
 ));
 
-constraint forall (n in NURSE, w in 1..(floor(nday/7))) (sum (day in DAYSPERWEEK) (sh[n,(7*(w-1)) + day ] != OFF) <= maxweek); 
+constraint forall (n in NURSE, d in DAYS where d + 7 <= nday+1) (sum (day in DAYSPERWEEK) (sh[n,d + day ] != OFF) <= maxweek); 
 
-constraint forall (n in NURSE, f in 1..(floor(nday/14))) (sum (day in DAYSPERFORT) (sh[n,(14*(f-1)) + day ] != OFF) >= minfort); 
+constraint forall (n in NURSE, d in DAYS where d + 14 <= nday+1) (sum (day in DAYSPERFORT) (sh[n,d + day ] != OFF) >= minfort); 
 
-constraint forall (n in NURSE, f in 1..(floor(nday/14))) (sum (day in DAYSPERFORT) (sh[n,(14*(f-1)) + day ] = NIGH) <= maxnightfort); 
+constraint forall (n in NURSE, d in DAYS where d + 14 <= nday +1) (sum (day in DAYSPERFORT) (sh[n,d + day ] = NIGH) <= maxnightfort); 
 
+
+% Calculate total shift cost and minimize 
+
+array[NURSE] of var int: total_shifts;
+constraint forall (n in NURSE) (total_shifts[n] = (sum (d in DAYS) (bool2int(sh[n,d] != OFF))));
+
+constraint total_cost = (sum(n in NURSE) (total_shifts[n] * shift_cost[n]));
+
+constraint forall (w in WARD, d in DAYS) (count_wd[w,d] = (sum(n in NURSE) (wd[n,d] = w)) /\ count_wd[w,d] >= minward[w,d]);
+
+array [NURSE] of var int : distinct_wards;
+
+constraint forall (n in NURSE) (distinct_wards[n] = nvalue([wd[n,d]|d in DAYS]) /\ distinct_wards[n] <= maxward);
+
+solve minimize total_cost;

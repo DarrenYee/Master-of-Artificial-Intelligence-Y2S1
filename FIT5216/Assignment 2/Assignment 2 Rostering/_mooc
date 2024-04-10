@@ -7,39 +7,24 @@
                     {
                         "edits": [
                             {
-                                "line": 56,
-                                "text": "constraint forall (i in NURSE, j in DAYS) (rostered_off[i,j] -> sh[i,j] = OFF);",
-                                "type": "insertion"
-                            },
-                            {
-                                "line": 56,
-                                "text": "",
-                                "type": "insertion"
-                            }
-                        ],
-                        "timestamp": 1712562002.38
-                    },
-                    {
-                        "edits": [
-                            {
-                                "line": 60,
-                                "text": "constraint forall (i in NURSE, j in 1..nday - 2) (sh[i,j] = OFF /\\ sh[i,j+1] = OFF -> sh[i,j+2] != OFF);",
+                                "line": 65,
+                                "text": "constraint forall (i in NURSE, j in DAYS) ((rostered_off[i,j] -> (sh[i,j] = OFF /\\ wd[i,j] = dummy)) /\\ (not (rostered_off[i,j]) -> wd[i,j] != dummy));",
                                 "type": "deletion"
                             },
                             {
-                                "line": 61,
-                                "text": "",
-                                "type": "deletion"
+                                "line": 66,
+                                "text": "constraint forall (i in NURSE, j in DAYS) (rostered_off[i,j] -> (sh[i,j] = OFF /\\ wd[i,j] = dummy));",
+                                "type": "insertion"
                             }
                         ],
-                        "timestamp": 1712562006.726
+                        "timestamp": 1712745860.615
                     }
                 ],
-                "snapshot": "% nurse rostering project\n% STAGE A data\nenum NURSE; % set of nurses to roster\nenum SHIFT = { MORN, DAY, EVEN, NIGH, OFF };\nint: nday;     % number of days for roster\nset of int: DAYS = 1..nday; \narray[NURSE,DAYS] of bool: rostered_off; % nurse is guaranteed an off shift\n% STAGE B data\nint: maxweek; % maximum working shifts in any 7 day period\nint: maxnightfort; % maximum night shifts in any 14 day period\nint: minfort; % minimum number of working shifts in any 14 day period\narray[SHIFT,DAYS] of int: minshift; % minimum number of nurses rostered on each shift\nset of int: DAYSPERWEEK = 1..7;\nset of int: DAYSPERFORT = 1..14;\n% STAGE C data\narray[NURSE] of int: shift_cost;  \n% STAGE D data\nenum WARD;  % set of wards to roster\nWARD: dummy; % dummy ward\narray[WARD,DAYS] of int: minward; % minimum number of nurses rostered to each ward\nconstraint forall(d in DAYS)(assert(minward[dummy,d] = 0, \"Dummy ward has non zero minimum on day \\(d)\\n\"));\nint: maxward; % maximum number of wards any nurse can work in the roster period\n% STAGE E data\nenum SKILL;\nSKILL: senior;                         % which skill is senior\narray[NURSE] of set of SKILL: skill;   % skills that each nurse has\narray[WARD] of set of SKILL: required; % particular skills for each ward\nopt WARD: emergency; % emergency ward if its being rostered\nenum SLICE = { PREDAWN, AM, PM, LATE };\n% coverage MORNING = {PREDAWN, AM}, \n%          DAY = {AM,PM} \n%          EVENING = {PM, LATE}, \n%          NIGHT {LATE, PREDAWN of the next day} \n\n%%%% DECISIONS\narray[NURSE,DAYS] of var SHIFT: sh; % shift for each nurse on each day\nvar 0..nday*sum(shift_cost): total_cost;\narray[NURSE,DAYS] of var WARD: wd; % ward rostered for each nurse\n\n\ninclude \"regular.mzn\";  \n\n      \narray[1..10,SHIFT] of 0..10: d =\n      [|1,2,3,4,5  %MORN\n      | 0,8,0,0,0  %DAY\n      | 0,2,3,4,5  %EVEN\n      | 0,0,3,6,5  %NIGH1\n      | 1,2,3,4,9  %OFF1\n      | 0,0,3,7,5  %NIGH2\n      | 0,0,3,0,5  %NIGH3\n      | 1,8,3,4,5  %DAY2\n      | 1,2,3,4,0  %OFF1\n      | 1,2,3,4,5|]; %DUMMY     \n     \nconstraint forall (i in NURSE, j in DAYS) (rostered_off[i,j] -> sh[i,j] = OFF);\n\nconstraint forall(i in NURSE) (regular ([sh[i,j] |j in DAYS],10,5,d,10,SHIFT));\n\n% Each Shift s for each d has at least minshift [s,d]\n% No more than maxweek shifts (excluding off) in 7 day period\n% No less than minfort in 14 day period\n% No more than maxnightfort NIGH in any 14 day perdod\n\ninclude \"globals.mzn\";\n\nconstraint forall (day in DAYS) \n  (global_cardinality (\n    [sh[n,day] | n in NURSE],\n    [MORN, DAY, EVEN, NIGH, OFF],\n    [minshift[MORN,day],minshift[DAY,day],minshift[EVEN,day],minshift[NIGH,day],minshift[OFF,day]],\n    [card(NURSE),card(NURSE),card(NURSE),card(NURSE),card(NURSE)]\n));\n\nconstraint forall (n in NURSE, w in 1..(floor(nday/7))) (sum (day in DAYSPERWEEK) (sh[n,(7*(w-1)) + day ] != OFF) <= maxweek); \n\nconstraint forall (n in NURSE, f in 1..(floor(nday/14))) (sum (day in DAYSPERFORT) (sh[n,(14*(f-1)) + day ] != OFF) >= minfort); \n\nconstraint forall (n in NURSE, f in 1..(floor(nday/14))) (sum (day in DAYSPERFORT) (sh[n,(14*(f-1)) + day ] = NIGH) <= maxnightfort); \n\n"
+                "snapshot": "% nurse rostering project\n% STAGE A data\nenum NURSE; % set of nurses to roster\nenum SHIFT = { MORN, DAY, EVEN, NIGH, OFF };\nint: nday;     % number of days for roster\nset of int: DAYS = 1..nday; \narray[NURSE,DAYS] of bool: rostered_off; % nurse is guaranteed an off shift\n% STAGE B data\nint: maxweek; % maximum working shifts in any 7 day period\nint: maxnightfort; % maximum night shifts in any 14 day period\nint: minfort; % minimum number of working shifts in any 14 day period\narray[SHIFT,DAYS] of int: minshift; % minimum number of nurses rostered on each shift\nset of int: DAYSPERWEEK = 0..6;\nset of int: DAYSPERFORT = 0..13;\n% STAGE C data\narray[NURSE] of int: shift_cost;  \n% STAGE D data\nenum WARD;  % set of wards to roster\nWARD: dummy; % dummy ward\narray[WARD,DAYS] of int: minward; % minimum number of nurses rostered to each ward\nconstraint forall(d in DAYS)(assert(minward[dummy,d] = 0, \"Dummy ward has non zero minimum on day \\(d)\\n\"));\nint: maxward; % maximum number of wards any nurse can work in the roster period\n% STAGE E data\nenum SKILL;\nSKILL: senior;                         % which skill is senior\narray[NURSE] of set of SKILL: skill;   % skills that each nurse has\narray[WARD] of set of SKILL: required; % particular skills for each ward\nopt WARD: emergency; % emergency ward if its being rostered\nenum SLICE = { PREDAWN, AM, PM, LATE };\n% coverage MORNING = {PREDAWN, AM}, \n%          DAY = {AM,PM} \n%          EVENING = {PM, LATE}, \n%          NIGHT {LATE, PREDAWN of the next day} \n\n%%%% DECISIONS\narray[NURSE,DAYS] of var SHIFT: sh; % shift for each nurse on each day\nvar 0..nday*sum(shift_cost): total_cost;\narray[NURSE,DAYS] of var WARD: wd; % ward rostered for each nurse\narray[WARD,DAYS] of var int: count_wd; % ward rostered for each nurse\n\n\n% MORN = no rules\n% DAY = DAY -> DAY then no rules\n% EVEN = EVEN -> all except for MORN\n% NIGH = No NIGH -> NIGH -> NIGH, NO NIGH -> DAY or MORN\n% OFF = no OFF -> OFF\n\ninclude \"globals.mzn\";\ninclude \"regular.mzn\";  \n\n      \narray[1..10,SHIFT] of 0..10: d =\n      [|1,2,3,4,5  %MORN(1)\n      | 0,8,0,0,0  %DAY(2)\n      | 0,2,3,4,5  %EVEN(3)\n      | 0,0,3,6,5  %NIGH1(4)\n      | 1,2,3,4,9  %OFF1(5)\n      | 0,0,3,7,5  %NIGH2(6)\n      | 0,0,3,0,5  %NIGH3(7)\n      | 1,8,3,4,5  %DAY2(8)\n      | 1,2,3,4,0  %OFF2(9)\n      | 1,2,3,4,5|]; %DUMMY(10)     \n\n  \nconstraint forall (i in NURSE, j in DAYS) (rostered_off[i,j] -> (sh[i,j] = OFF /\\ wd[i,j] = dummy));\n\nconstraint forall(i in NURSE) (regular ([sh[i,j] |j in DAYS],10,5,d,10,{1,2,3,4,5,6,7,8,9,10}));\n\n\n% Each Shift s for each d has at least minshift [s,d]\n% No more than maxweek shifts (excluding off) in 7 day period\n% No less than minfort in 14 day period\n% No more than maxnightfort NIGH in any 14 day perdod\n\n\nconstraint forall (day in DAYS) \n  (global_cardinality (\n    [sh[n,day] | n in NURSE],\n    [MORN, DAY, EVEN, NIGH, OFF],\n    [minshift[MORN,day],minshift[DAY,day],minshift[EVEN,day],minshift[NIGH,day],minshift[OFF,day]],\n    [card(NURSE),card(NURSE),card(NURSE),card(NURSE),card(NURSE)]\n));\n\nconstraint forall (n in NURSE, d in DAYS where d + 7 <= nday+1) (sum (day in DAYSPERWEEK) (sh[n,d + day ] != OFF) <= maxweek); \n\nconstraint forall (n in NURSE, d in DAYS where d + 14 <= nday+1) (sum (day in DAYSPERFORT) (sh[n,d + day ] != OFF) >= minfort); \n\nconstraint forall (n in NURSE, d in DAYS where d + 14 <= nday +1) (sum (day in DAYSPERFORT) (sh[n,d + day ] = NIGH) <= maxnightfort); \n\n\n% Calculate total shift cost and minimize \n\narray[NURSE] of var int: total_shifts;\nconstraint forall (n in NURSE) (total_shifts[n] = (sum (d in DAYS) (bool2int(sh[n,d] != OFF))));\n\nconstraint total_cost = (sum(n in NURSE) (total_shifts[n] * shift_cost[n]));\n\nconstraint forall (w in WARD, d in DAYS) (count_wd[w,d] = (sum(n in NURSE) (wd[n,d] = w)) /\\ count_wd[w,d] >= minward[w,d]);\n\narray [NURSE] of var int : distinct_wards;\n\nconstraint forall (n in NURSE) (distinct_wards[n] = nvalue([wd[n,d]|d in DAYS]) /\\ distinct_wards[n] <= maxward);\n\nsolve minimize total_cost;"
             }
         },
-        "parent": "02110dc5-4c12-444f-8482-c7ad4cd21453",
-        "uuid": "472144f6-5faa-476d-8e4c-fb275f9ff1f6"
+        "parent": "96b0031f-8261-4f23-acf0-d9830da2b775",
+        "uuid": "d2e0d376-32cc-41a1-8716-73b0f77a893d"
     },
     "modelAssignments": [
         {
