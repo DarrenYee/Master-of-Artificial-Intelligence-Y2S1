@@ -39,6 +39,7 @@ array[NURSE,DAYS] of var WARD: wd; % ward rostered for each nurse
 array[WARD,DAYS] of var int: count_wd; % ward rostered for each nurse
 
 
+
 % MORN = no rules
 % DAY = DAY -> DAY then no rules
 % EVEN = EVEN -> all except for MORN
@@ -61,15 +62,11 @@ array[1..10,SHIFT] of 0..10: trans =
       | 1,2,3,4,0  %OFF2(9)
       | 1,2,3,4,5|]; %DUMMY(10)     
 
-  
-constraint forall (n in NURSE, day in DAYS) ((rostered_off[n,day] -> (sh[n,day] = OFF)));
+constraint forall (n in NURSE, day in DAYS) (sh[n,day] = OFF <-> wd[n,day] = dummy);
 
-constraint forall (n in NURSE, day in DAYS) ((sh[n,day] = OFF -> wd[n,day] = dummy));
+constraint forall (n in NURSE, day in DAYS) (rostered_off[n,day] -> (sh[n,day] = OFF));
 
-constraint forall (n in NURSE, day in DAYS) ((sh[n,day] != OFF -> wd[n,day] != dummy));
-
-
-constraint forall(i in NURSE) (regular ([sh[i,day] |day in DAYS],10,5,trans,10,{1,2,3,4,5,6,7,8,9,10}));
+constraint forall(n in NURSE) (regular ([sh[n,day] |day in DAYS],10,5,trans,10,{1,2,3,4,5,6,7,8,9,10}));
 
 
 % Each Shift s for each d has at least minshift [s,d]
@@ -86,30 +83,34 @@ constraint forall (day in DAYS)
     [card(NURSE),card(NURSE),card(NURSE),card(NURSE),card(NURSE)]
 ));
 
-constraint forall (n in NURSE, day in DAYS where day + 7 <= nday+1) (sum (offset in DAYSPERWEEK) (sh[n,day + offset ] != OFF) <= maxweek); 
+array [NURSE,DAYS] of var 0..1: sh_off;
+array [NURSE,DAYS] of var 0..1: sh_nigh;
 
-constraint forall (n in NURSE, day in DAYS where day + 14 <= nday+1) (sum (offset in DAYSPERFORT) (sh[n,day + offset ] != OFF) >= minfort); 
+constraint forall (n in NURSE, day in DAYS) (sh_off[n,day] = bool2int(sh[n,day] != OFF) /\ sh_nigh[n,day] = bool2int(sh[n,day] = NIGH));
 
-constraint forall (n in NURSE, day in DAYS where day + 14 <= nday +1) (sum (offset in DAYSPERFORT) (sh[n,day + offset ] = NIGH) <= maxnightfort); 
-
-
-% Calculate total shift cost and minimize 
+constraint forall (n in NURSE) (sliding_sum(0, maxweek, 7,[sh_off[n, day] |day in DAYS]) /\ sliding_sum(minfort, nday, 14,[sh_off[n, day] | day in DAYS]) /\ sliding_sum(0, maxnightfort, 14,[sh_nigh[n, day] | day in DAYS]));
 
 array[NURSE] of var int: total_shifts;
-constraint forall (n in NURSE) (total_shifts[n] = (sum (d in DAYS) (bool2int(sh[n,d] != OFF))));
 
-constraint total_cost = (sum(n in NURSE) (total_shifts[n] * shift_cost[n]));
+constraint total_cost = (sum(n in NURSE,d in DAYS) (sh_off[n,d]* shift_cost[n]));
 
 constraint forall (w in WARD, day in DAYS) (count_wd[w,day] = (sum(n in NURSE) (wd[n,day] = w)) /\ count_wd[w,day] >= minward[w,day]);
 
-array [NURSE] of var int : distinct_wards;
+array [NURSE] of var 1..maxward : distinct_wards;
 
-constraint forall (n in NURSE) (distinct_wards[n] = nvalue([wd[n,day]|day in DAYS]) /\ distinct_wards[n] <= maxward);
-
+constraint forall (n in NURSE) (distinct_wards[n] = nvalue([wd[n,day]|day in DAYS]));
 
 % If wd = ward then ward's speciality has to be on duty
+set of int: skill_max = 0..card(SKILL) +1;
+array [NURSE, DAYS] of var skill_max: testing;
+constraint forall(n in NURSE,day in DAYS)(testing[n,day] =  card(skill[n] intersect required[wd[n,day]]) + (if (required[wd[n,day]] = {}) then 1 else 0 endif));
+array [WARD,DAYS] of var 0..card(NURSE): testing1; 
 
-% FOr each slice, there must be a senior
+% constraint forall (n in NURSE,day in DAYS) (testing[n,day] > 0 );
+
+constraint forall (w in WARD, day in DAYS) (if (minward[w,day] > 0) then ((testing1[w,day] = (sum (n in NURSE) (bool2int(wd[n,day] = w)*testing[n,day]))) > 0) endif);
+
+% % FOr each slice, there must be a senior
 
 % If emergency = True, 
 
