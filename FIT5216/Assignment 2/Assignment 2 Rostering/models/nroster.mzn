@@ -31,25 +31,26 @@ enum SLICE = { PREDAWN, AM, PM, LATE };
 %          DAY = {AM,PM} 
 %          EVENING = {PM, LATE}, 
 %          NIGHT {LATE, PREDAWN of the next day} 
+set of SLICE: MORNING_SLICE = {PREDAWN, AM};
+set of SLICE: DAY_SLICE  = {AM, PM};
+set of SLICE: EVENING_SLICE  = {PM, LATE};
+set of SLICE: NIGHT_SLICE  = {LATE, PREDAWN};
 
 %%%% DECISIONS
 array[NURSE,DAYS] of var SHIFT: sh; % shift for each nurse on each day
 var 0..nday*sum(shift_cost): total_cost;
 array[NURSE,DAYS] of var WARD: wd; % ward rostered for each nurse
-array[WARD,DAYS] of var int: count_wd; % ward rostered for each nurse
 
-
-
-% MORN = no rules
-% DAY = DAY -> DAY then no rules
-% EVEN = EVEN -> all except for MORN
-% NIGH = No NIGH -> NIGH -> NIGH, NO NIGH -> DAY or MORN
-% OFF = no OFF -> OFF
 
 include "globals.mzn";
 include "regular.mzn";  
 
-      
+% (A2) Transition Table for A2
+% MORN = no rules
+% DAY = DAY -> DAY then no rules
+% EVEN = EVEN -> all except for MORN
+% NIGH = No NIGH -> NIGH -> NIGH, NO NIGH -> DAY or MORN
+% OFF = no OFF -> OFF     
 array[1..10,SHIFT] of 0..10: trans =
       [|1,2,3,4,5  %MORN(1)
       | 0,8,0,0,0  %DAY(2)
@@ -62,19 +63,16 @@ array[1..10,SHIFT] of 0..10: trans =
       | 1,2,3,4,0  %OFF2(9)
       | 1,2,3,4,5|]; %DUMMY(10)     
 
+% (D) Loops across all shifts such that if their shifts are off then the ward assigned is a dummy ward. This constraint uses the biconditional operator
 constraint forall (n in NURSE, day in DAYS) (sh[n,day] = OFF <-> wd[n,day] = dummy);
 
+% (A1) Loops through all nurses that are rostered off from the given rostered_off and ensures that we do not assign any shifts to them
 constraint forall (n in NURSE, day in DAYS) (rostered_off[n,day] -> (sh[n,day] = OFF));
 
+% (A2) Applies the regular constraint according to the transition array mentioned above
 constraint forall(n in NURSE) (regular ([sh[n,day] |day in DAYS],10,5,trans,10,{1,2,3,4,5,6,7,8,9,10}));
 
-
-% Each Shift s for each d has at least minshift [s,d]
-% No more than maxweek shifts (excluding off) in 7 day period
-% No less than minfort in 14 day period
-% No more than maxnightfort NIGH in any 14 day perdod
-
-
+% (B1) Each Shift s for each d has at least minshift [s,d] (Global constraint used = global cardinality)
 constraint forall (day in DAYS) 
   (global_cardinality (
     [sh[n,day] | n in NURSE],
@@ -83,38 +81,43 @@ constraint forall (day in DAYS)
     [card(NURSE),card(NURSE),card(NURSE),card(NURSE),card(NURSE)]
 ));
 
+% (B2) Auxiliary array to represents whether the shift assigned is off (used to prevent usage ot bool2int within array)
 array [NURSE,DAYS] of var 0..1: sh_off;
 array [NURSE,DAYS] of var 0..1: sh_nigh;
 
+% (B2) Create auxiliary array to convert into boolean context for sliding sum
 constraint forall (n in NURSE, day in DAYS) (sh_off[n,day] = bool2int(sh[n,day] != OFF) /\ sh_nigh[n,day] = bool2int(sh[n,day] = NIGH));
 
+% (B2) Perform sliding sum on the array created to enforce constraints listed in B2
 constraint forall (n in NURSE) (sliding_sum(0, maxweek, 7,[sh_off[n, day] |day in DAYS]) /\ sliding_sum(minfort, nday, 14,[sh_off[n, day] | day in DAYS]) /\ sliding_sum(0, maxnightfort, 14,[sh_nigh[n, day] | day in DAYS]));
 
-array[NURSE] of var int: total_shifts;
-
+% (C) Calculate shift cost based on the sh_off array that we have created (if off then no cost, else add cost)
 constraint total_cost = (sum(n in NURSE,d in DAYS) (sh_off[n,d]* shift_cost[n]));
 
-constraint forall (w in WARD, day in DAYS) (count_wd[w,day] = (sum(n in NURSE) (wd[n,day] = w)) /\ count_wd[w,day] >= minward[w,day]);
+% (D1) Nurses for that ward on that particular day
+array[WARD,DAYS] of var int: count_wd; 
 
+% (D1) Calculates the number of nurses assigned to the ward on that particular day
+constraint forall (w in WARD, day in DAYS) (count_wd[w,day] = (sum(n in NURSE) (wd[n,day] = w)));
+
+% (D1) Constraints count to be minward at least 
+constraint forall (w in WARD, day in DAYS) (count_wd[w,day] >= minward[w,day]);
+
+% (D2) Distinct wards for maxward constraint
 array [NURSE] of var 1..maxward : distinct_wards;
 
+% (D2) Calculate distinct ward using nvalue constraint
 constraint forall (n in NURSE) (distinct_wards[n] = nvalue([wd[n,day]|day in DAYS]));
 
-% If wd = ward then ward's speciality has to be on duty
-set of int: skill_max = 0..card(SKILL) +1;
-array [NURSE, DAYS] of var skill_max: testing;
-constraint forall(n in NURSE,day in DAYS)(testing[n,day] =  card(skill[n] intersect required[wd[n,day]]) + (if (required[wd[n,day]] = {}) then 1 else 0 endif));
-array [WARD,DAYS] of var 0..card(NURSE): testing1; 
-
-% constraint forall (n in NURSE,day in DAYS) (testing[n,day] > 0 );
-
-constraint forall (w in WARD, day in DAYS) (if (minward[w,day] > 0) then ((testing1[w,day] = (sum (n in NURSE) (bool2int(wd[n,day] = w)*testing[n,day]))) > 0) endif);
-
-% % FOr each slice, there must be a senior
+% Part E Incomplete implementation
+% % If wd = ward then ward's speciality has to be on duty
+% set of int: skill_max = 0..card(SKILL) +1;
+% array [NURSE, DAYS] of var skill_max: testing;
+% constraint forall(n in NURSE,day in DAYS)(testing[n,day] =  card(skill[n] intersect required[wd[n,day]]) + (if (required[wd[n,day]] = {}) then 1 else 0 endif));
+% array [WARD,DAYS] of var 0..card(NURSE): testing1; 
+% constraint forall (w in WARD, day in DAYS) (if (minward[w,day] > 0) then ((testing1[w,day] = (sum (n in NURSE) (bool2int(wd[n,day] = w)*testing[n,day]))) > 0) endif);
+% For each slice, there must be a senior
 
 % If emergency = True, 
-
-
-
 
 solve minimize total_cost;
