@@ -47,10 +47,10 @@ include "regular.mzn";
 
 % (A2) Transition Table for A2
 % MORN = no rules
-% DAY = DAY -> DAY then no rules
+% DAY = DAY1 -> DAY2 (Then DAY2 is unrestricted). This was to ensure Day is always followed by another Day
 % EVEN = EVEN -> all except for MORN
-% NIGH = No NIGH -> NIGH -> NIGH, NO NIGH -> DAY or MORN
-% OFF = no OFF -> OFF     
+% NIGH = NO NIGH -> DAY or MORN, NIGH1 transitions to NIGH2 and to NIGH3 after seeing three consecutive NIGHS to ensure we dont see another one
+% OFF = no OFF -> OFF    (OFF1 will transition to OFF2 when OFF is observed, which cannot observe another OFF)  
 array[1..10,SHIFT] of 0..10: trans =
       [|1,2,3,4,5  %MORN(1)
       | 0,8,0,0,0  %DAY(2)
@@ -73,6 +73,7 @@ constraint forall (n in NURSE, day in DAYS) (rostered_off[n,day] -> (sh[n,day] =
 constraint forall(n in NURSE) (regular ([sh[n,day] |day in DAYS],10,5,trans,10,{1,2,3,4,5,6,7,8,9,10}));
 
 % (B1) Each Shift s for each d has at least minshift [s,d] (Global constraint used = global cardinality)
+% Used global constraints to ensure solver defines the most efficient one to solve this problem
 constraint forall (day in DAYS) 
   (global_cardinality (
     [sh[n,day] | n in NURSE],
@@ -89,9 +90,12 @@ array [NURSE,DAYS] of var 0..1: sh_nigh;
 constraint forall (n in NURSE, day in DAYS) (sh_off[n,day] = bool2int(sh[n,day] != OFF) /\ sh_nigh[n,day] = bool2int(sh[n,day] = NIGH));
 
 % (B2) Perform sliding sum on the array created to enforce constraints listed in B2
+% To fulfill maxweek, we set the wrindow to 7 and loop through the sh_off array to ensure that for each of them they have to be within maxweek.
+% To fulfill minfort, we set the window to 14 and loop through the sh_off array to ensure for each window they have to be between minfort and nday
+% To fulfill maxnightfort, we set the window to 14 and loop through the sh_nigh array to ensure for each window they are within maxnightfort
 constraint forall (n in NURSE) (sliding_sum(0, maxweek, 7,[sh_off[n, day] |day in DAYS]) /\ sliding_sum(minfort, nday, 14,[sh_off[n, day] | day in DAYS]) /\ sliding_sum(0, maxnightfort, 14,[sh_nigh[n, day] | day in DAYS]));
 
-% (C) Calculate shift cost based on the sh_off array that we have created (if off then no cost, else add cost)
+% (C) Calculate shift cost for all nurses across all days based on the sh_off array that we have created (if off then no cost, else add cost)
 constraint total_cost = (sum(n in NURSE,d in DAYS) (sh_off[n,d]* shift_cost[n]));
 
 % (D1) Nurses for that ward on that particular day
@@ -101,12 +105,15 @@ array[WARD,DAYS] of var int: count_wd;
 constraint forall (w in WARD, day in DAYS) (count_wd[w,day] = (sum(n in NURSE) (wd[n,day] = w)));
 
 % (D1) Constraints count to be minward at least 
+% Seperated from the other D1 constraint because performance is worse if combined within the same loop (even though they are looping through the same array)
 constraint forall (w in WARD, day in DAYS) (count_wd[w,day] >= minward[w,day]);
 
 % (D2) Distinct wards for maxward constraint
+% Reasoning for using an auxiliary array is so that i can set the bounds to maxward as opposed to writing an additional loop to constraint that
 array [NURSE] of var 1..maxward : distinct_wards;
 
 % (D2) Calculate distinct ward using nvalue constraint
+% For each distinct wards value (for each nurse) the value will be nvalue(distinct) of their assigned wards across the days
 constraint forall (n in NURSE) (distinct_wards[n] = nvalue([wd[n,day]|day in DAYS]));
 
 % Part E Incomplete implementation
