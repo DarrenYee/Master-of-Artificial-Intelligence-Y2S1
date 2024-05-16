@@ -32,7 +32,6 @@ array[SERVICE] of TIME: service_end;   % when the service ideally ends
 enum ENGINE;                           % set of engines available
 array[ENGINE] of STOP: start;          % start location for engines
 enum SERVICEX = s(SERVICE) ++ e(ENGINE); 
-
 %%%%%%%%%%% Decisions %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 
 array[SERVICE,STOPNO] of var TIME: arrive;    % arrive time at each stop
@@ -51,6 +50,22 @@ array[SERVICE] of var SERVICEX: prev;         % previous service or engine
 % Arrival time of next stop is >= travel time from prev stop + departure time of prev stop
 % Dummy stop =  wait time = 0, (basically departure and arrival =  both departure time from previous stop)
 
-constraint forall (ser in SERVICE, stop in STOPNO) (arrive[ser,stop] >= service_start[ser])
-  
+% Stage A: No service starts (arrives) at first station before service start time
+constraint forall (ser in SERVICE, stop in STOPNO) (arrive[ser,stop] >= service_start[ser]);
+% Stage A: Wait time for each stop is depart time - arrive time
+constraint forall(ser in SERVICE, stop in STOPNO) (wait[ser,stop] = depart[ser,stop] - arrive[ser,stop] /\ service_stops[ser,stop] = route[sroute[ser],stop]);
+% Stage A: Intermediate array to access specific stop using service and stopno (to improve efficiency)
+array[SERVICE, STOPNO] of var STOP: service_stops;
+% Stage A: At every stop, wait time is >= minimal wait time
+constraint forall(ser in SERVICE, stop in STOPNO) (service_stops[ser,stop] = route[sroute[ser],stop]);
+constraint forall (ser in SERVICE, stop in STOPNO) (wait[ser,stop] >= minimal_wait[service_stops[ser,stop]]);
+% Stage A: Arrival time of next stop is >= travel time from prev stop + departure time of prev stop
+constraint forall (ser in SERVICE, stop in 1..max_route_length - 1) (arrive[ser,stop+1] >= depart[ser,stop] + travel_time[service_stops[ser,stop],service_stops[ser,stop+1]]);
+% Stage A: Dummy stop =  wait time = 0, (basically departure and arrival =  both departure time from previous stop)
+% Starts at two to avoid array accesssing 0 error (when dstop is the first stop in the route)
+constraint forall (ser in SERVICE, stop in 2..max_route_length where service_stops[ser,stop] == dstop) (arrive[ser,stop] == depart[ser, stop-1]);
+% Sets depart time to be equal to previous stop
+constraint forall (ser in SERVICE, stop in 1..max_route_length where service_stops[ser,stop] == dstop) (depart[ser, stop] == arrive[ser,stop]);
+
+
                                                                                     
